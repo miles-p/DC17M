@@ -6,26 +6,32 @@ int lastSwitchState = 0;  // Variable to store the previous state of the switch
 unsigned long lastDebounceTime = 0;  // Last time the switch state changed
 unsigned long debounceDelay = 50;    // Debounce time in milliseconds
 bool isHolding;
-unsigned long timeLastPressed; // needs to be long otherwise the millis function overloads and funky shit stards happening
-int holdTime = 250;
+unsigned long timeLastPressed; // needs to be long otherwise the millis function overloads and funky shit starts happening (this happens as the time hits the 16 bit int def. When it goes to long, this limit is raised to 32 bit)
+int holdTime = 200;
+int bulletRefresh = 300;
+int bulletCount;
+int fireSpeed = 40;
 
 void setup() {
   pinMode(switchPin, INPUT_PULLUP);  // Use internal pull-up resistor
   pinMode(ledPin, OUTPUT);
   Serial.begin(9600);
+  bulletCount = bulletRefresh;
 }
 
 void blasterShot() {
   // Simulate the blaster shot
   digitalWrite(ledPin, HIGH);
   delay(50);  // Adjust the delay for the LED on time to control shot duration
+  bulletCount -= 1;
   digitalWrite(ledPin, LOW);
 }
 void constantShot() {
   digitalWrite(ledPin, HIGH);
-  delay(50);  // Adjust the delay for the LED on time to control shot duration
+  delay(fireSpeed);  // Adjust the delay for the LED on time to control shot duration
+  bulletCount -= 1;
   digitalWrite(ledPin, LOW);
-  delay(50);
+  delay(fireSpeed);
 }
 
 void loop() {
@@ -50,16 +56,17 @@ void loop() {
       switchState = reading;
 
       // If the switch is pressed, simulate blaster shots
-      if (switchState == HIGH && isHolding == false) {
+      if (switchState == HIGH && isHolding == false && bulletCount > 0) {
         // Perform single shot action here
         blasterShot();
       }
     }
   }
-  if (lastSwitchState == LOW && reading == LOW && millis()-timeLastPressed > holdTime) {
+  if (lastSwitchState == LOW && reading == LOW && millis()-timeLastPressed > holdTime && bulletCount > 0) {
     isHolding = true;
     constantShot();
   }
+  Serial.println(bulletCount);
   // Save the current switch state for comparison in the next iteration
   lastSwitchState = reading;
 }
