@@ -1,3 +1,9 @@
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include "Adafruit_LEDBackpack.h"
+
+Adafruit_AlphaNum4 alpha4 = Adafruit_AlphaNum4();
+
 const int switchPin = 4;  // Pin connected to the switch
 const int ledPin = 6;     // Pin connected to the LED
 
@@ -11,12 +17,16 @@ int holdTime = 200;
 int bulletRefresh = 300;
 int bulletCount;
 int fireSpeed = 40;
+char counterArray[3];
 
 void setup() {
+  alpha4.begin(0x70);
   pinMode(switchPin, INPUT_PULLUP);  // Use internal pull-up resistor
   pinMode(ledPin, OUTPUT);
   Serial.begin(9600);
   bulletCount = bulletRefresh;
+  alpha4.clear();
+  alpha4.writeDisplay();
 }
 
 void blasterShot() {
