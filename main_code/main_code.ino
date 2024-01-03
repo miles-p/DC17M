@@ -1,13 +1,18 @@
 const int switchPin = 4;             // Pin connected to the switch
 const int ledPin = 6;                // Pin connected to the LED
+const int magPin = 10;
 int switchState = 0;                 // Variable to store the current state of the switch
-int lastSwitchState = 0;             // Variable to store the previous state of the switch
-unsigned long lastDebounceTime = 0;  // Last time the switch state changed
+int lastMagState;
+int lastSwitchStateSw = 0;             // Variable to store the previous state of the switch
+int lastSwitchStateMag = 0;
+unsigned long lastDebounceTimeSw = 0;  // Last time the switch state changed
+unsigned long lastDebounceTimeMag = 0;
 unsigned long debounceDelay = 50;    // Debounce time in milliseconds
 bool isHolding;
-unsigned long timeLastPressed;  // needs to be long otherwise the millis function overloads and funky shit starts happening (this happens as the time hits the 16 bit int def. When it goes to long, this limit is raised to 32 bit)
+bool isMagazine;
+unsigned long timeLastPressedSw;  // needs to be long otherwise the millis function overloads and funky shit starts happening (this happens as the time hits the 16 bit int def. When it goes to long, this limit is raised to 32 bit)
 int holdTime = 200;
-int bulletRefresh = 301;
+int bulletRefresh = 300;
 int bulletCount;
 int fireSpeed = 40;
 char dig1;
@@ -24,6 +29,7 @@ void setup() {
   alpha4.begin(0x70);  // pass in the address
   pinMode(switchPin, INPUT_PULLUP);  // Use internal pull-up resistor
   pinMode(ledPin, OUTPUT);
+  pinMode(magPin, INPUT_PULLUP);
   Serial.begin(9600);
   bulletCount = bulletRefresh;
   alpha4.writeDigitAscii(0,'0');
@@ -55,37 +61,53 @@ int splitDigits(int input) {
   dig2 = '0' + ((input / 10) % 10);
   dig3 = '0' + (input % 10);
 }
+void reload() {
+  bulletCount = bulletRefresh;
+}
 
 void loop() {
   alpha4.clear();
   isHolding = false;
-  int reading = digitalRead(switchPin);
+  int readingSw = digitalRead(switchPin);
+  int readingMag = digitalRead(magPin);
 
   // Debouncing the switch
-  if (reading != lastSwitchState) {
-    lastDebounceTime = millis();
-    if (reading == LOW) {
-      timeLastPressed = millis();
+  if (readingSw != lastSwitchStateSw) {
+    lastDebounceTimeSw = millis();
+    if (readingSw == LOW) {
+      timeLastPressedSw = millis();
     }
     //Serial.println("Finally high "+millis());
-    if (reading == HIGH) {
+    if (readingSw == HIGH) {
       isHolding = false;
     }
   }
 
-  if ((millis() - lastDebounceTime) > debounceDelay) {
+  if (readingMag == HIGH) {
+    isMagazine = false;
+    bulletCount = 0;
+  } else {
+    isMagazine = true;
+  }
+
+if (readingMag == LOW && lastSwitchStateMag == HIGH) {
+  reload();
+  lastSwitchStateMag == LOW;
+}
+
+  if ((millis() - lastDebounceTimeSw) > debounceDelay) {
     // If the switch state has changed, update the last switch state
-    if (reading != switchState) {
-      switchState = reading;
+    if (readingSw != switchState) {
+      switchState = readingSw;
 
       // If the switch is pressed, simulate blaster shots
-      if (switchState == HIGH && isHolding == false && bulletCount > 0) {
+      if (switchState == HIGH && isHolding == false && bulletCount > 0 && isMagazine && millis() > 500) {
         // Perform single shot action here
         blasterShot();
       }
     }
   }
-  if (lastSwitchState == LOW && reading == LOW && millis() - timeLastPressed > holdTime && bulletCount > 0) {
+  if (lastSwitchStateSw == LOW && readingSw == LOW && millis() - timeLastPressedSw > holdTime && bulletCount > 0 && isMagazine) {
     isHolding = true;
     constantShot();
   }
@@ -96,6 +118,7 @@ void loop() {
   alpha4.writeDigitAscii(1,dig1);
   alpha4.writeDigitAscii(2,dig2);
   alpha4.writeDigitAscii(3,dig3); 
-  lastSwitchState = reading;
+  lastSwitchStateSw = readingSw;
+  lastSwitchStateMag = readingMag;
   alpha4.writeDisplay();
 }
