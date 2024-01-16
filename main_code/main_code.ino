@@ -19,6 +19,7 @@ unsigned long debounceDelay = 50;      // Debounce time in milliseconds
 // Variables for various states and timings
 bool isHolding;
 bool isMagazine;
+bool constFiring;
 unsigned long timeLastPressedSw;   // Needs to be long to handle millis() overflow
 int holdTime = 200;
 int bulletRefresh = 300;
@@ -30,18 +31,23 @@ char dig3;
 
 // Include necessary libraries
 #include <Wire.h>
-#include <Adafruit_GFX.h>
-#include "Adafruit_LEDBackpack.h"
+#include "HT16K33.h"
 #include "SerialMP3Player.h"
 #define NO_SERIALMP3_DELAY 1
 
 // Initialize objects
-Adafruit_AlphaNum4 alpha4 = Adafruit_AlphaNum4();
+HT16K33 seg(0x70);
 SerialMP3Player mp3(rx,tx);
 
 void setup() {
   // Initialize components and set initial values
-  alpha4.begin(0x70);  // pass in the address
+  Wire.begin();
+  Wire.setClock(100000);
+  seg.begin();
+  seg.displayColon(0);
+  seg.cacheOn();
+  setDisplay(bulletRefresh);
+  constFiring = false;
   mp3.begin(9600);
   mp3.sendCommand(CMD_SEL_DEV, 0, 2);
   pinMode(switchPin, INPUT_PULLUP);  // Use internal pull-up resistor for the switch
@@ -49,19 +55,20 @@ void setup() {
   pinMode(magPin, INPUT_PULLUP);
   Serial.begin(9600);
   bulletCount = bulletRefresh;
-  alpha4.writeDigitAscii(0,'0');
-  alpha4.writeDigitAscii(1,'3');
-  alpha4.writeDigitAscii(2,'0');
-  alpha4.writeDigitAscii(3,'0');
-  alpha4.writeDisplay();
+}
+
+void setDisplay(int bullets) {
+  seg.displayInt(bullets);
 }
 
 // Function to simulate a single blaster shot
 void blasterShot() {
   mp3.play();
+  delay(5);
   digitalWrite(ledPin, HIGH);
   delay(50);
   bulletCount -= 1;
+  setDisplay(bulletCount);
   digitalWrite(ledPin, LOW);
 }
 
@@ -70,6 +77,7 @@ void constantShot() {
   digitalWrite(ledPin, HIGH);
   delay(fireSpeed);
   bulletCount -= 1;
+  setDisplay(bulletCount);
   digitalWrite(ledPin, LOW);
   delay(fireSpeed);
 }
@@ -84,11 +92,11 @@ int splitDigits(int input) {
 // Function to reload the blaster
 void reload() {
   bulletCount = bulletRefresh;
+  setDisplay(bulletRefresh);
 }
 
 void loop() {
   // Clear the display and reset states
-  alpha4.clear(); 
   isHolding = false;
   int readingSw = digitalRead(switchPin);
   int readingMag = digitalRead(magPin);
@@ -133,17 +141,16 @@ void loop() {
   if (lastSwitchStateSw == LOW && readingSw == LOW && millis() - timeLastPressedSw > holdTime && bulletCount > 0 && isMagazine) {
     isHolding = true;
     constantShot();
+    if (constFiring == false) {
+      constFiring = true;
+      mp3.play(2);
+    }
   }
+  if (isHolding == false && constFiring == true) {
+    mp3.pause();
+  } 
 
   // Update and display bullet count
-  splitDigits(bulletCount);
-  Serial.println(dig1);
-  Serial.println(dig2);
-  Serial.println(dig3);
-  alpha4.writeDigitAscii(1, dig1);
-  alpha4.writeDigitAscii(2, dig2);
-  alpha4.writeDigitAscii(3, dig3); 
   lastSwitchStateSw = readingSw;
   lastSwitchStateMag = readingMag;
-  alpha4.writeDisplay();
 }
