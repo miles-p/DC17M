@@ -10,6 +10,7 @@ int switchState = 0;           // Variable to store the current state of the swi
 int lastMagState;              // Variable to store the previous state of the magazine
 int lastSwitchStateSw = 0;     // Variable to store the previous state of the switch
 int lastSwitchStateMag = 0;    // Variable to store the previous state of the magazine
+int lastHoldingState = 0;
 
 // Variables for switch debouncing
 unsigned long lastDebounceTimeSw = 0;  // Last time the switch state changed
@@ -63,7 +64,7 @@ void setDisplay(int bullets) {
 
 // Function to simulate a single blaster shot
 void blasterShot() {
-  mp3.play();
+  mp3.play(1);
   delay(5);
   digitalWrite(ledPin, HIGH);
   delay(50);
@@ -143,14 +144,29 @@ void loop() {
     constantShot();
     if (constFiring == false) {
       constFiring = true;
-      mp3.play(2);
+      //mp3.play(2);
     }
   }
+
+  if (lastHoldingState != isHolding) {
+    if (isHolding == 0) {
+      Serial.println("DOWN");
+      mp3.pause();
+      lastHoldingState = 0;
+    }
+    if (isHolding == 1) {
+      Serial.println("UP");
+      mp3.play(2);
+      lastHoldingState = 1;
+    }
+  }
+
   if (isHolding == false && constFiring == true) {
-    mp3.pause();
+    //mp3.pause();
   } 
 
   // Update and display bullet count
   lastSwitchStateSw = readingSw;
   lastSwitchStateMag = readingMag;
+  lastHoldingState = isHolding;
 }
