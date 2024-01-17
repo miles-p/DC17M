@@ -6,10 +6,10 @@ const short rx = 11;          // RX pin for serial communication
 const short tx = 12;          // TX pin for serial communication
 
 // Variables for switch and magazine states
-int switchState = 0;           // Variable to store the current state of the switch
-int lastMagState;              // Variable to store the previous state of the magazine
-int lastSwitchStateSw = 0;     // Variable to store the previous state of the switch
-int lastSwitchStateMag = 0;    // Variable to store the previous state of the magazine
+int switchState = 0;           // Current state of the switch
+int lastMagState;              // Previous state of the magazine
+int lastSwitchStateSw = 0;     // Previous state of the switch
+int lastSwitchStateMag = 0;    // Previous state of the magazine
 int lastHoldingState = 0;
 
 // Variables for switch debouncing
@@ -38,7 +38,7 @@ char dig3;
 
 // Initialize objects
 HT16K33 seg(0x70);
-SerialMP3Player mp3(rx,tx);
+SerialMP3Player mp3(rx, tx);
 
 void setup() {
   // Initialize components and set initial values
@@ -83,13 +83,6 @@ void constantShot() {
   delay(fireSpeed);
 }
 
-// Function to split the digits of a number
-int splitDigits(int input) {
-  dig1 = '0' + (input / 100);
-  dig2 = '0' + ((input / 10) % 10);
-  dig3 = '0' + (input % 10);
-}
-
 // Function to reload the blaster
 void reload() {
   bulletCount = bulletRefresh;
@@ -124,7 +117,7 @@ void loop() {
   // Reload when the magazine is inserted
   if (readingMag == LOW && lastSwitchStateMag == HIGH) {
     reload();
-    lastSwitchStateMag == LOW; // Note: This line should be an assignment (=) not a comparison (==)
+    lastSwitchStateMag = LOW; // Fixed assignment
   }
 
   if ((millis() - lastDebounceTimeSw) > debounceDelay) {
@@ -132,7 +125,7 @@ void loop() {
       switchState = readingSw;
 
       // Trigger a blaster shot if conditions are met
-      if (switchState == HIGH && isHolding == false && bulletCount > 0 && isMagazine && millis() > 500) {
+      if (switchState == HIGH && !isHolding && bulletCount > 0 && isMagazine && millis() > 500) {
         blasterShot();
       }
     }
@@ -142,7 +135,7 @@ void loop() {
   if (lastSwitchStateSw == LOW && readingSw == LOW && millis() - timeLastPressedSw > holdTime && bulletCount > 0 && isMagazine) {
     isHolding = true;
     constantShot();
-    if (constFiring == false) {
+    if (!constFiring) {
       constFiring = true;
       //mp3.play(2);
     }
@@ -160,10 +153,6 @@ void loop() {
       lastHoldingState = 1;
     }
   }
-
-  if (isHolding == false && constFiring == true) {
-    //mp3.pause();
-  } 
 
   // Update and display bullet count
   lastSwitchStateSw = readingSw;
